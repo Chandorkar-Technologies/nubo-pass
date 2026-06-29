@@ -9,7 +9,6 @@
 #
 # Installers attach to a GitHub Release when you push a tag (e.g. v2.2.0).
 
----
 kind: pipeline
 type: docker
 name: linux
