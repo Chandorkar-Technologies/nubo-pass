@@ -1,0 +1,168 @@
+import { qase } from 'playwright-qase-reporter'
+
+import {
+  LoginPage,
+  MainPage,
+  SideMenuPage,
+  CreateOrEditPage,
+  Utilities,
+  DetailsPage
+} from '../../components/index.js'
+import { test, expect } from '../../fixtures/app.runner.js'
+import testData from '../../fixtures/test-data.js'
+
+test.describe('Creating WiFi Item', () => {
+  test.describe.configure({ mode: 'serial' })
+
+  let loginPage,
+    createOrEditPage,
+    sideMenuPage,
+    mainPage,
+    utilities,
+    detailsPage,
+    page
+
+  test.beforeAll(async ({ app }) => {
+    page = await app.getPage()
+    const root = page.locator('body')
+    loginPage = new LoginPage(root)
+    sideMenuPage = new SideMenuPage(root)
+    createOrEditPage = new CreateOrEditPage(root)
+    utilities = new Utilities(root)
+    mainPage = new MainPage(root)
+    detailsPage = new DetailsPage(root)
+
+    await loginPage.loginToApplication(testData.credentials.validPassword)
+
+    await sideMenuPage.selectSideBarCategory('wifiPassword')
+    await utilities.deleteAllElements()
+    await mainPage.clickAddItem('wifiPassword')
+  })
+
+  test.beforeEach(async ({ app }) => {
+    page = await app.getPage()
+    const root = page.locator('body')
+    loginPage = new LoginPage(root)
+    mainPage = new MainPage(root)
+    sideMenuPage = new SideMenuPage(root)
+    createOrEditPage = new CreateOrEditPage(root)
+    utilities = new Utilities(root)
+    detailsPage = new DetailsPage(root)
+  })
+
+  test.afterAll(async ({ }) => {
+    await utilities.deleteAllElements()
+    await sideMenuPage.clickSidebarExitButton()
+  })
+
+  test('Creating the "WiFi" item', async ({ page }) => {
+    qase.id(2135)
+    await createOrEditPage.fillCreateOrEditInput('wifi-name', 'WiFi Title')
+    await createOrEditPage.fillCreateOrEditInput('wifi-password', 'WiFi Pass')
+    await createOrEditPage.fillCreateOrEditInput('wifi-comment', 'WiFi Note')
+    await createOrEditPage.clickOnCreateOrEditButton('wifi-save')
+  })
+
+  test('Viewing created item. Verify item details', async ({ page }) => {
+    qase.id(2136)
+    await mainPage.openElementDetails()
+    await detailsPage.verifyTitle('WiFi Title')
+    await detailsPage.verifyItemDetailsValue('Wi-Fi Password', 'WiFi Pass')
+    await detailsPage.verifyItemDetailsValue('Add comment', 'WiFi Note')
+  })
+
+  test('Password visibility icon displays/hides value', async ({ page }) => {
+    qase.id(2137)
+    await mainPage.openElementDetails()
+    await mainPage.verifyElementTitle('WiFi Title')
+    await createOrEditPage.verifyPasswordType('password')
+    await createOrEditPage.clickShowHidePasswordButtonFirst()
+    await createOrEditPage.verifyPasswordType('text')
+  })
+
+  test('Add via Favorite icon', async ({ page }) => {
+    qase.id(2140)
+    await sideMenuPage.selectSideBarCategory('all')
+    await mainPage.clickMainViewHeaderSelect()
+    await mainPage.elementCheckBox(false)
+    await mainPage.clickOnFirstElement()
+    await mainPage.elementCheckBox(true)
+    await mainPage.clickOnMainViewFavoriteIcon()
+    await sideMenuPage.verifySideBarFavoritesFolder('1 items')
+  })
+
+  test('Remove via Favorite icon', async ({ page }) => {
+    qase.id(2141)
+    await mainPage.clickMainViewHeaderSelect()
+    await mainPage.clickOnFirstElement()
+    await mainPage.clickOnMainViewFavoriteIcon()
+    await sideMenuPage.verifySideBarFavoritesFolder('0 items')
+  })
+
+  test('Add via More options', async ({ page }) => {
+    qase.id(2142)
+    await mainPage.openElementDetails()
+    await detailsPage.openItemBarThreeDotsDropdownMenu()
+    await detailsPage.clickMarkAsFavoriteButton()
+    await sideMenuPage.verifySideBarFavoritesFolder('1 items')
+  })
+
+  test('Remove via More options', async ({ page }) => {
+    qase.id(2143)
+    await detailsPage.openItemBarThreeDotsDropdownMenu()
+    await detailsPage.clickRemoveFromFavoritesButton()
+    await sideMenuPage.verifySideBarFavoritesFolder('0 items')
+  })
+
+  // test('Add Custom Note', async ({ page }) => {
+  //   qase.id(2144)
+  //   await mainPage.verifyElementTitle('WiFi Title')
+  //   await mainPage.openElementDetails()
+  //   await detailsPage.editElement()
+  //   await createOrEditPage.clickCreateCustomItem()
+  //   await createOrEditPage.clickCustomItemOptionNote()
+  //   await expect(createOrEditPage.customNoteInput).toHaveCount(1)
+  //   await createOrEditPage.fillCustomNoteInput()
+  //   await createOrEditPage.clickOnCreateOrEditButton('save')
+  //   await page.waitForTimeout(testData.timeouts.action)
+  //   await mainPage.clickDetailsCloseButton()
+  // })
+
+  // test('Delete Note field', async ({ page }) => {
+  //   qase.id(2145)
+  //   await mainPage.verifyElementTitle('WiFi Title')
+  //   await mainPage.openElementDetails()
+  //   await detailsPage.editElement()
+  //   await expect(createOrEditPage.customNoteInput_first).toHaveCount(2)
+  //   await createOrEditPage.deleteCustomNote()
+  //   await expect(createOrEditPage.customNoteInput_first).toHaveCount(1)
+  //   await createOrEditPage.clickOnCreateOrEditButton('save')
+  //   await page.waitForTimeout(testData.timeouts.action)
+  //   await mainPage.clickDetailsCloseButton()
+  // })
+
+  test('Close via Cross icon', async ({ page }) => {
+    qase.id(2146)
+    await mainPage.verifyElementTitle('WiFi Title')
+    await mainPage.openElementDetails()
+    await detailsPage.editElement()
+    await detailsPage.clickElementItemCloseButton()
+    await mainPage.verifyElementTitle('WiFi Title')
+  })
+
+  test('Empty fields not displayed in view mode', async ({ page }) => {
+    qase.id(2147)
+    await mainPage.verifyElementTitle('WiFi Title')
+    await mainPage.openElementDetails()
+    await detailsPage.editElement()
+    await createOrEditPage.fillCreateOrEditInput('wifi-comment', '')
+
+    await createOrEditPage.clickOnCreateOrEditButton('wifi-save')
+    await mainPage.openElementDetails()
+
+    await detailsPage.verifyTitle('WiFi Title')
+
+    await detailsPage.verifyItemDetailsValueIsNotVisible('Add comment')
+    await mainPage.clickDetailsCloseButton()
+  })
+})

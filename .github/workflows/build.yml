@@ -1,0 +1,55 @@
+name: Build Nubo Pass
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-latest
+            script: dist:mac:arm64:dev
+            artifact: out/*.dmg
+          - os: ubuntu-latest
+            script: dist:linux:x64
+            artifact: |
+              out/*.AppImage
+              out/*.snap
+          - os: windows-latest
+            script: dist:win:x64
+            artifact: |
+              out/*.msix
+              out/*.appx
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      # Native deps (sodium, bare, hyperdht) compile per-OS on the runner.
+      - name: Install dependencies
+        run: npm install
+
+      - name: Build distributable (${{ matrix.script }})
+        run: npm run ${{ matrix.script }}
+        env:
+          # No signing in CI yet — produces ad-hoc / unsigned artifacts.
+          # Add APPLE_* / WINDOWS_SIGN_HOOK secrets here for signed releases.
+          CSC_IDENTITY_AUTO_DISCOVERY: "false"
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: nubo-pass-${{ matrix.os }}
+          path: ${{ matrix.artifact }}
+          if-no-files-found: warn
+          retention-days: 14
