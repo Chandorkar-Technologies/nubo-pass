@@ -1,0 +1,105 @@
+# Nubo Pass — multi-OS build on Drone CI (ci.hostingduty.com).
+# Bypasses GitHub Actions billing — builds run on your own runners.
+#
+# Setup (one-time, in the Drone UI):
+#   1. Activate the repo Chandorkar-Technologies/nubo-pass in Drone.
+#   2. Add secret `github_token` (a GitHub PAT with `repo`) for Release uploads.
+#   3. Ensure a docker runner (Linux) is registered; attach exec runners on a
+#      Windows host (for .msix) and a Mac host (for .dmg) to enable those pipelines.
+#
+# Installers attach to a GitHub Release when you push a tag (e.g. v2.2.0).
+
+---
+kind: pipeline
+type: docker
+name: linux
+platform:
+  os: linux
+  arch: amd64
+
+steps:
+  - name: build
+    image: node:22-bookworm
+    commands:
+      - apt-get update
+      - apt-get install -y --no-install-recommends python3 make g++ fakeroot dpkg rpm libarchive-tools ca-certificates
+      - npm install
+      - npm run dist:linux:x64
+      - ls -lh out/
+
+  - name: release
+    image: plugins/github-release
+    settings:
+      api_key:
+        from_secret: github_token
+      files:
+        - out/*.AppImage
+        - out/*.snap
+      title: ${DRONE_TAG}
+    when:
+      event: tag
+
+trigger:
+  event: [push, tag]
+  branch: [main]
+
+---
+kind: pipeline
+type: exec
+name: windows
+platform:
+  os: windows
+
+steps:
+  - name: build
+    commands:
+      - npm install
+      - npm run dist:win:x64
+      - dir out
+
+  # exec runners can't run plugin images — upload via the gh CLI on the host
+  # (install GitHub CLI on the Windows runner host).
+  - name: release
+    environment:
+      GH_TOKEN:
+        from_secret: github_token
+    commands:
+      - gh release upload ${DRONE_TAG} (Get-Item out/*.msix) --clobber --repo Chandorkar-Technologies/nubo-pass
+    when:
+      event: tag
+
+trigger:
+  event: [push, tag]
+  branch: [main]
+
+depends_on: []
+
+---
+kind: pipeline
+type: exec
+name: macos
+platform:
+  os: darwin
+
+steps:
+  - name: build
+    commands:
+      - npm install
+      - npm run dist:mac:arm64:dev
+      - ls -lh out/
+
+  # exec runner — upload via gh CLI on the Mac host.
+  - name: release
+    environment:
+      GH_TOKEN:
+        from_secret: github_token
+    commands:
+      - gh release upload ${DRONE_TAG} out/*.dmg --clobber --repo Chandorkar-Technologies/nubo-pass
+    when:
+      event: tag
+
+trigger:
+  event: [push, tag]
+  branch: [main]
+
+depends_on: []
