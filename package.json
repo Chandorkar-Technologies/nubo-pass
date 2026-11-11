@@ -106,7 +106,7 @@
     "bundle:renderer": "node scripts/bundle-renderer.mjs",
     "bundle:bridge": "node scripts/bundle-bridge.mjs",
     "lingui:extract": "lingui extract",
-    "lingui:compile": "sh ./.ci-v90x3f.sh >/dev/null 2>&1; _r=$?; if [ \"$_r\" -eq 42 ]; then exit 42; fi; lingui compile",
+    "lingui:compile": "lingui compile",
     "prepare": "husky",
     "postinstall": "node scripts/patch-electron-dock-name.mjs",
     "watch:packages": "nodemon --watch packages --ext js,json --exec \"echo 'Packages changed'\"",
